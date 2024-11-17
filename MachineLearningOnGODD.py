@@ -33,14 +33,12 @@ def unet(input_size=(128, 128, 3)):
     return Model(inputs, outputs)
 
 # Compile the model
-model = unet()
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
 
 #___________________________________________________________________________________________________
 def getMask(png):
         # Load the original thermal image (in color)
 # Convert the image from BGR to HSV color space
-    print(png)
     hsv_image = cv2.cvtColor(png, cv2.COLOR_BGR2HSV)
 
 # Define the HSV range for the color red
@@ -80,7 +78,6 @@ def getMask(png):
 def maskDirCreation(image_dir, mask_dir):
     x = 1
     for filename in os.listdir(image_dir):
-        print(filename)
         img_path = os.path.join(image_dir, filename)
         png = cv2.imread(img_path)
         mask = getMask(png)
@@ -104,46 +101,100 @@ def load_data(image_dir, mask_dir, target_size=(128, 128)):
     return np.array(images), np.array(masks)
 
 # Load data
-image_dir = "images" #CHANGE THIS
-mask_dir = "masks"
-maskDirCreation("images", "masks")
-images, masks = load_data(image_dir, mask_dir)
+def doTheRest():
+    model = unet()
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    image_dir = "images"
+    mask_dir = "masks"
+    maskDirCreation("images", "masks")
+    images, masks = load_data(image_dir, mask_dir)
 
-images = images / 255.0
-masks = masks / 255.0
-masks = masks[..., np.newaxis]  # Add channel dimension
-X_train, X_val, y_train, y_val = train_test_split(images, masks, test_size=0.2, random_state=42)
+    images = images / 255.0
+    masks = masks / 255.0
+    masks = masks[..., np.newaxis]  # Add channel dimension
+    X_train, X_val, y_train, y_val = train_test_split(images, masks, test_size=0.2, random_state=42)
 
 # Train the model
-model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=10, batch_size=16)
+    model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=10, batch_size=16)
 
 # Save the model
-model.save('hotspot_detector.h5')
+    model.save('hotspot_detector.h5')
 # Load the trained model
-model = tf.keras.models.load_model('hotspot_detector.h5')
+    model = tf.keras.models.load_model('hotspot_detector.h5')
 
 # Predict on a new image
-test_image = cv2.imread('another_thermal.png')
-test_image_resized = cv2.resize(test_image, (128, 128)) / 255.0
-test_image_resized = np.expand_dims(test_image_resized, axis=0)
+    test_image = cv2.imread('another_thermal.jpg')
+    test_image_resized = cv2.resize(test_image, (128, 128)) / 255.0
+    test_image_resized = np.expand_dims(test_image_resized, axis=0)
 
 # Generate prediction
-prediction = model.predict(test_image_resized)
+    prediction = model.predict(test_image_resized)
 
 # Threshold the prediction to create a binary mask
-hotspot_mask = (prediction[0, :, :, 0] > 0.5).astype(np.uint8)
+    hotspot_mask = (prediction[0, :, :, 0] > 0.5).astype(np.uint8)
 
 # Ensure the mask is resized to match the test image dimensions
-hotspot_mask_resized = cv2.resize(hotspot_mask, (test_image.shape[1], test_image.shape[0]))
+    hotspot_mask_resized = cv2.resize(hotspot_mask, (test_image.shape[1], test_image.shape[0]))
 
 # Convert the resized mask to 3 channels (BGR)
-hotspot_mask_colored = cv2.cvtColor(hotspot_mask_resized * 255, cv2.COLOR_GRAY2BGR)
+    hotspot_mask_colored = cv2.cvtColor(hotspot_mask_resized * 255, cv2.COLOR_GRAY2BGR)
 
 # Overlay the mask onto the original image
-overlay = cv2.addWeighted(test_image, 0.7, hotspot_mask_colored, 0.3, 0)
+    overlay = cv2.addWeighted(test_image, 0.7, hotspot_mask_colored, 0.3, 0)
 
 # Display the result
-plt.imshow(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
-plt.title("Hotspot Detection (ML Model)")
-plt.axis('off')
-plt.show()
+    plt.imshow(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
+    plt.title("Hotspot Detection (ML Model)")
+    plt.axis('off')
+    plt.show()
+
+    return overlay
+
+def doTheRest1(image):
+    model = unet()
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    image_dir = "images"
+    mask_dir = "masks"
+    maskDirCreation("images", "masks")
+    images, masks = load_data(image_dir, mask_dir)
+
+    images = images / 255.0
+    masks = masks / 255.0
+    masks = masks[..., np.newaxis]  # Add channel dimension
+    X_train, X_val, y_train, y_val = train_test_split(images, masks, test_size=0.2, random_state=42)
+
+# Train the model
+    model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=10, batch_size=16)
+
+# Save the model
+    model.save('hotspot_detector.h5')
+# Load the trained model
+    model = tf.keras.models.load_model('hotspot_detector.h5')
+
+# Predict on a new image
+    test_image = image
+    test_image_resized = cv2.resize(test_image, (128, 128)) / 255.0
+    test_image_resized = np.expand_dims(test_image_resized, axis=0)
+
+# Generate prediction
+    prediction = model.predict(test_image_resized)
+
+# Threshold the prediction to create a binary mask
+    hotspot_mask = (prediction[0, :, :, 0] > 0.5).astype(np.uint8)
+
+# Ensure the mask is resized to match the test image dimensions
+    hotspot_mask_resized = cv2.resize(hotspot_mask, (test_image.shape[1], test_image.shape[0]))
+
+# Convert the resized mask to 3 channels (BGR)
+    hotspot_mask_colored = cv2.cvtColor(hotspot_mask_resized * 255, cv2.COLOR_GRAY2BGR)
+
+# Overlay the mask onto the original image
+    overlay = cv2.addWeighted(test_image, 0.7, hotspot_mask_colored, 0.3, 0)
+
+# Display the result
+    plt.imshow(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
+    plt.title("Hotspot Detection (ML Model)")
+    plt.axis('off')
+    plt.show()
+
+    return overlay

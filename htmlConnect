@@ -1,0 +1,65 @@
+from flask import Flask, request, render_template, send_file
+import os
+from werkzeug.utils import secure_filename
+from MachineLearningOnGODD import getMask, unet, maskDirCreation, load_data, doTheRest1  # Import functions from hotspot.py
+import cv2
+import tensorflow as tf
+
+app = Flask(__name__)
+
+# Directories for file management
+UPLOAD_FOLDER = 'uploads'
+PROCESSED_FOLDER = 'processed'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(PROCESSED_FOLDER, exist_ok=True)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['PROCESSED_FOLDER'] = PROCESSED_FOLDER
+
+# Load the pre-trained model
+model_path = 'hotspot_detector.h5'
+if not os.path.exists(model_path):
+    raise FileNotFoundError(f"Model file '{model_path}' not found!")
+print("Loading model...")
+model = tf.keras.models.load_model(model_path)
+print("Model loaded successfully.")
+
+@app.route('/')
+def index():
+    """Render the upload page."""
+    return render_template('index.html')
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    """Handle image upload and processing."""
+    if 'image' not in request.files:
+        return "No file part", 400
+
+    file = request.files['image']
+    if file.filename == '':
+        return "No selected file", 400
+
+    if file:
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        # Process the image using a function from hotspot.py
+        processed_path = process_image(filepath, filename)
+        return send_file(processed_path, mimetype='image/png')
+
+def process_image(filepath, filename):
+    """Process the uploaded image using logic from hotspot.py."""
+    # Load and process the image
+    image = cv2.imread(filepath)
+
+    # Use the getMask function from hotspot.py to process the image
+    processed_image = doTheRest1(image)
+
+    # Save the processed image
+    processed_path = os.path.join(app.config['PROCESSED_FOLDER'], filename)
+    cv2.imwrite(processed_path, processed_image)
+    return processed_path
+
+if __name__ == '__main__':
+    app.run(debug=True)
